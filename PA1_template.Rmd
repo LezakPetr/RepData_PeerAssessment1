@@ -1,5 +1,6 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
+author: Petr Lezak
 output: 
   html_document:
     keep_md: true
@@ -7,19 +8,54 @@ output:
 
 
 ## Loading and preprocessing the data
+```{r}
+library(dplyr);
+data <- read.csv(unz('activity.zip', "activity.csv"));
 
-
+totalPerDay <- filter(data, !is.na(steps)) %>% group_by(date) %>% summarise (steps = sum(steps));
+```
 
 ## What is mean total number of steps taken per day?
+```{r}
+meanSteps <- mean(totalPerDay$steps);
+medianSteps <- median(totalPerDay$steps);
+hist(totalPerDay$steps);
+```
 
-
+Mean steps per day is `r format(meanSteps, digits = 6)` and median steps is `r format(medianSteps, digits = 6)`.
 
 ## What is the average daily activity pattern?
-
-
-
+```{r}
+meanPerInterval <- filter(data, !is.na(steps)) %>% group_by(interval) %>% summarise (steps = mean(steps));
+plot(meanPerInterval$interval, meanPerInterval$steps, type='l');
+maxSteps <- max(meanPerInterval$steps);
+maxInterval <-meanPerInterval$interval[meanPerInterval$steps == maxSteps];
+maxInterval
+```
 ## Imputing missing values
+```{r}
+imputted <- data;
 
+for (i in 1:length(imputted$steps)) {
+  if (is.na(imputted$steps[i])) {
+    imputted$steps[i] <- as.numeric(filter(data, !is.na(steps)) %>% filter (interval == imputted$interval[i]) %>% summarise (steps = mean(steps)));
+  }  
+}
 
+imputted$wday <- as.POSIXlt(data$date)$wday;
+imputted$weekend <- (imputted$wday == 0 | imputted$wday == 6);
+
+sum(is.na(data$steps))
+sum(is.na(imputted$steps))
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+meanPerIntervalWeekend <- filter(imputted, !is.na(steps)) %>% filter(weekend) %>% group_by(interval) %>% summarise (steps = mean(steps));
+
+meanPerIntervalWorkingDay <- filter(imputted, !is.na(steps)) %>% filter(!weekend) %>% group_by(interval) %>% summarise (steps = mean(steps));
+
+par(mfrow=c(1,2))
+plot(meanPerIntervalWeekend$interval, meanPerIntervalWeekend$steps, type='l', xlab='Interval on weekend', ylab='Steps');
+plot(meanPerIntervalWorkingDay$interval, meanPerIntervalWorkingDay$steps, type='l', xlab='Interval on working days', ylab='Steps');
+```
